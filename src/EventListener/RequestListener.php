@@ -22,6 +22,8 @@
 
 namespace Uecode\Bundle\QPushBundle\EventListener;
 
+use Aws\Sns\Message;
+use Aws\Sns\MessageValidator;
 use Symfony\Component\HttpKernel\HttpKernel;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
@@ -123,6 +125,14 @@ class RequestListener
     private function handleSnsNotifications(GetResponseEvent $event)
     {
         $notification = json_decode((string)$event->getRequest()->getContent(), true);
+
+        try {
+            $message = new Message($notification);
+            $validator = new MessageValidator();
+            $validator->validate($message);
+        } catch (\Exception $e) {
+            throw new BadRequestHttpException();
+        }
 
         $type = $event->getRequest()->headers->get('x-amz-sns-message-type');
 
