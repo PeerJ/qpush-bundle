@@ -116,6 +116,23 @@ class UecodeQPushExtension extends Extension
                 )
             ;
 
+            // If the queue name is different,
+            // add it here for subscription confirmations,
+            // as the queue name is parsed from the TopicARN
+            // in AWSProvider::onNotification
+            if (isset($values['options']['queue_name'])) {
+                $queueName = $values['options']['queue_name'];
+
+                $definition->addTag(
+                    'uecode_qpush.event_listener',
+                    [
+                        'event' => "{$queueName}.on_notification",
+                        'method' => "onNotification",
+                        'priority' => 255
+                    ]
+                );
+            }
+
             $registry->addMethodCall('addProvider', [$queue, new Reference($name)]);
         }
     }
