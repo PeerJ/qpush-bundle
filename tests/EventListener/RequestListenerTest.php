@@ -25,6 +25,7 @@ namespace Uecode\Bundle\QPushBundle\Tests\EventListener;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
@@ -105,6 +106,8 @@ class RequestListenerTest extends \PHPUnit_Framework_TestCase
 
     public function testListenerHandlesAwsNotificationRequests()
     {
+        $this->setExpectedException(BadRequestHttpException::class);
+
         $message = [
             'Type'      => 'Notification',
             'MessageId' => 123,
@@ -149,6 +152,8 @@ class RequestListenerTest extends \PHPUnit_Framework_TestCase
 
     public function testListenerHandlesAwsSubscriptionRequests()
     {
+        $this->setExpectedException(BadRequestHttpException::class);
+
         $message = [
             'Type'         => 'SubscriptionConfirmation',
             'MessageId'    => 123,

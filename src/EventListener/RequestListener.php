@@ -24,6 +24,7 @@ namespace Uecode\Bundle\QPushBundle\EventListener;
 
 use Aws\Sns\Message;
 use Aws\Sns\MessageValidator;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\HttpKernel;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
