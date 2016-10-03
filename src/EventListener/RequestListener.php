@@ -131,7 +131,7 @@ class RequestListener
             $validator = new MessageValidator();
             $validator->validate($message);
         } catch (\Exception $e) {
-            throw new BadRequestHttpException();
+            throw new BadRequestHttpException($e->getMessage());
         }
 
         $type = $event->getRequest()->headers->get('x-amz-sns-message-type');
