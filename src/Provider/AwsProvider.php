@@ -643,11 +643,24 @@ class AwsProvider extends AbstractProvider
             return;
         }
 
-        $messages = $this->receive();
-        foreach ($messages as $message) {
-
-            $messageEvent = new MessageEvent($this->name, $message);
-            $dispatcher->dispatch(Events::Message($this->name), $messageEvent);
+        // Trying to avoid race conditions
+        // Loop at least twice, if long polling or a delay is turned on for the queue that should be enough time to
+        // avoid the race condition.
+        // We may want to break the loop early if $messageProcessed becomes greater than one
+        $messageProcessed = 0;
+        for ($i = 1; $i <= 2; $i++) {
+            $messages = $this->receive();
+            $messageProcessed += sizeof($messages);
+            foreach ($messages as $message) {
+                $messageEvent = new MessageEvent($this->name, $message);
+                $dispatcher->dispatch(Events::Message($this->name), $messageEvent);
+            }
+        }
+        $message = sprintf("Processed %d messages for Queue %s", $messageProcessed, $this->getNameWithPrefix());
+        if ($messageProcessed > 0 ){
+            $this->log(200, $message );
+        } else {
+            $this->log(400, $message );
         }
     }
 
