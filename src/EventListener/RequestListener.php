@@ -24,19 +24,21 @@ namespace Uecode\Bundle\QPushBundle\EventListener;
 
 use Aws\Sns\Message;
 use Aws\Sns\MessageValidator;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\HttpKernel;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Event\GetResponseEvent;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Uecode\Bundle\QPushBundle\Message\Notification;
+use Symfony\Component\HttpKernel\HttpKernel;
 use Uecode\Bundle\QPushBundle\Event\Events;
 use Uecode\Bundle\QPushBundle\Event\NotificationEvent;
+use Uecode\Bundle\QPushBundle\Message\Notification;
 
 /**
  * @author Keith Kirk <kkirk@undergroundelephant.com>
  */
-class RequestListener
-{
+
+class RequestListener {
     /**
      * Symfony Event Dispatcher
      *
@@ -49,8 +51,7 @@ class RequestListener
      *
      * @param EventDispatcherInterface $dispatcher A Symfony Event Dispatcher
      */
-    public function __construct(EventDispatcherInterface $dispatcher)
-    {
+	public function __construct(EventDispatcherInterface $dispatcher) {
         $this->dispatcher   = $dispatcher;
     }
 
@@ -59,8 +60,7 @@ class RequestListener
      *
      * @param GetResponseEvent $event The Kernel Request's GetResponseEvent
      */
-    public function onKernelRequest(GetResponseEvent $event)
-    {
+	public function onKernelRequest(GetResponseEvent $event) {
         if (HttpKernel::MASTER_REQUEST != $event->getRequestType()) {
             return;
         }
@@ -82,19 +82,15 @@ class RequestListener
      * @param GetResponseEvent $event The Kernel Request's GetResponseEvent
      * @return string|void
      */
-    private function handleIronMqNotifications(GetResponseEvent $event)
-    {
+	private function handleIronMqNotifications(GetResponseEvent $event) {
         $headers    = $event->getRequest()->headers;
         $messageId  = $headers->get('iron-message-id');
 
-        // We add the message in an array with Queue as the property name
-        $message    = json_decode($event->getRequest()->getContent(), true);
-
-        if (empty($message['_qpush_queue'])) {
-            return;
+		if (null === ($message = json_decode($event->getRequest()->getContent(), true))) {
+			throw new \InvalidArgumentException('Unable to decode JSON');
         }
 
-        $queue      = $message['_qpush_queue'];
+		$queue    = $this->getIronMqQueueName($event, $message);
         $metadata   = [
             'iron-subscriber-message-id'  => $headers->get('iron-subscriber-message-id'),
             'iron-subscriber-message-url' => $headers->get('iron-subscriber-message-url')
@@ -122,8 +118,7 @@ class RequestListener
      * @param GetResponseEvent $event The Kernel Request's GetResponseEvent
      * @return string
      */
-    private function handleSnsNotifications(GetResponseEvent $event)
-    {
+	private function handleSnsNotifications(GetResponseEvent $event) {
         $notification = json_decode((string)$event->getRequest()->getContent(), true);
 
         try {
@@ -184,4 +179,29 @@ class RequestListener
 
         return "SNS Subscription Confirmation Received.";
     }
+
+	/**
+	 * Get the name of the IronMq queue.
+	 *
+	 * @param GetResponseEvent $event
+	 * @param array $message
+	 *
+	 * @return string
+	 */
+	private function getIronMqQueueName(GetResponseEvent $event, array&$message) {
+		if (array_key_exists('_qpush_queue', $message)) {
+			return $message['_qpush_queue'];
+		} else if (null !== ($subscriberUrl = $event->getRequest()->headers->get('iron-subscriber-message-url'))) {
+			if (preg_match('#/queues/([a-z0-9_-]+)/messages/#i', $subscriberUrl, $matches)) {
+				$queue = $matches[1];
+				if (substr($queue, 0, 6) == 'qpush_') {
+					$queue = substr($queue, 6);
+				}
+
+				return $queue;
+			}
+		}
+
+		throw new \RuntimeException('Unable to get queue name');
+	}
 }
