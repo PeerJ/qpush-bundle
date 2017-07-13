@@ -40,6 +40,9 @@ use Uecode\Bundle\QPushBundle\Message\Message;
  */
 class AwsProvider extends AbstractProvider
 {
+    const POLLING_INTERVAL = 20 ;
+    const POLLING_ATTEMPTS = 3 ;
+
     /**
      * Aws SQS Client
      *
@@ -642,25 +645,37 @@ class AwsProvider extends AbstractProvider
 
             return;
         }
-
-        // Trying to avoid race conditions
-        // Loop at least twice, if long polling or a delay is turned on for the queue that should be enough time to
-        // avoid the race condition.
-        // We may want to break the loop early if $messageProcessed becomes greater than one
-        $messageProcessed = 0;
-        for ($i = 1; $i <= 2; $i++) {
+        // Try to ensure that SNS WebHook polls the SQS and gets the message.
+        // So loop $this::POLLING_ATTEMPTS times, and sleep $this::POLLING_INTERVAL between
+        $i = 0 ;
+        $messageCount = 0 ;
+        do {
+            // don't sleep on first loop
+            if ($i++ > 0) {
+                sleep($this::POLLING_INTERVAL);
+            }
             $messages = $this->receive();
-            $messageProcessed += sizeof($messages);
+            $messageCount += count($messages);
+            // if we get more than one message then sometime process it
             foreach ($messages as $message) {
                 $messageEvent = new MessageEvent($this->name, $message);
                 $dispatcher->dispatch(Events::Message($this->name), $messageEvent);
             }
-        }
-        $message = sprintf("Processed %d messages for Queue %s", $messageProcessed, $this->getNameWithPrefix());
-        if ($messageProcessed > 0 ){
-            $this->log(200, $message );
+            // if we haven't had a messages then try:
+            // upto $this::POLLING_INTERVAL times every $this::POLLING_ATTEMPTS
+        } while ($messageCount < 0 && $i <= $this::POLLING_ATTEMPTS);
+
+        $logMessage = sprintf(
+            "Processed %d messages for Queue %s, iterated %d times",
+            $messageCount,
+            $this->getNameWithPrefix(),
+            $i
+        );
+        // did we find one message only on the first go?
+        if ($i == 1 && $messageCount == 1 ) {
+            $this->log(200, $logMessage);
         } else {
-            $this->log(400, $message );
+            $this->log(400, $logMessage);
         }
     }
 
