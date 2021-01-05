@@ -61,7 +61,8 @@ class Configuration implements ConfigurationInterface
             'ironmq' => ['token', 'project_id'],
             'sync' => [],
             'custom' => ['service'],
-            'file' => ['path']
+            'file' => ['path'],
+            'doctrine' => []
         ];
 
         $node
@@ -98,6 +99,10 @@ class Configuration implements ConfigurationInterface
                     ->end()
                     // File
                     ->scalarNode('path')->end()
+                   // Doctrine
+                    ->scalarNode('entity_manager')
+                         ->defaultValue('doctrine.orm.default_entity_manager')
+                    ->end()
                 ->end()
 
                 ->validate()
@@ -187,6 +192,14 @@ class Configuration implements ConfigurationInterface
                                 ->defaultValue(-1)
                                 ->info('How many push requests per second will be triggered. -1 for unlimited, 0 disables push')
                                 ->example(1)
+                            ->end()
+                            ->booleanNode('fifo')
+                                ->defaultFalse()
+                                ->info('If the queue is FIFO (aws)')
+                            ->end()
+                            ->booleanNode('content_based_deduplication')
+                                ->defaultFalse()
+                                ->info('If the FIFO queue has content based deduplication (aws)')
                             ->end()
                             ->append($this->getSubscribersNode())
                         ->end()

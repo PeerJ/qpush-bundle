@@ -14,7 +14,7 @@ class CustomProviderTest extends \PHPUnit_Framework_TestCase
     private $provider;
 
     /**
-     * @var \Symfony\Bridge\Monolog\Logger
+     * @var \Monolog\Logger
      */
     private $logger;
 
@@ -82,14 +82,14 @@ class CustomProviderTest extends \PHPUnit_Framework_TestCase
             'subscribers'           => []
         ];
 
-        $cache = $this->getMock(
+        $cache = $this->createMock(
             'Doctrine\Common\Cache\PhpFileCache',
             [],
             ['/tmp', 'qpush.custom.test.php']
         );
 
-        $this->logger = $this->getMock(
-            'Symfony\Bridge\Monolog\Logger', [], ['qpush.test']
+        $this->logger = $this->createMock(
+            'Monolog\Logger', [], ['qpush.test']
         );
 
         $this->mock = new CustomMockClient('custom', $options, null, $cache, $this->logger);
@@ -103,4 +103,4 @@ class CustomProviderTest extends \PHPUnit_Framework_TestCase
             ->expects($this->never())
             ->method(new \PHPUnit_Framework_Constraint_IsAnything());
     }
-} 
+}

@@ -39,19 +39,17 @@ class NotificationTest extends BaseMessageTest
         $this->message = null;
     }
 
-    /**
-     * @expectedException PHPUnit_Framework_Error
-     */
     public function testConstructor()
     {
         $notification = new Notification(123, ['foo' => 'bar'], ['baz' => 'qux']);
         $this->assertInstanceOf('Uecode\Bundle\QPushBundle\Message\Notification', $notification);
 
         if (version_compare(PHP_VERSION, '7.0', '>=')) {
-            $this->setExpectedException('TypeError');
-        } else {
-            $this->setExpectedException('PHPUnit_Framework_Error');
+            // This will throw an Fatal error, not an exception
+            return;
         }
+
+        $this->setExpectedException('PHPUnit_Framework_Error');
         
         new Notification(123, ['foo' => 'bar'], 'invalid argument');
     }
